@@ -206,7 +206,7 @@ class ProductDetailsView extends GetView<ProductDetailsController> {
                     onPressed: () => Get.dialog(
                       SafetyTipDialog(
                         onConfirm: () {
-                          // TODO: url_launcher দিয়ে এসএমএস পাঠাবে
+                          Get.toNamed('/chat');
                         },
                       ),
                     ),

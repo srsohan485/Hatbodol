@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:hatbodol/modules/chat/bindings/chat_binding.dart';
+import 'package:hatbodol/modules/chat/bindings/chat_list_binding.dart';
+import 'package:hatbodol/modules/chat/views/chat_list_view.dart';
+import 'package:hatbodol/modules/chat/views/chat_view.dart';
 import 'package:hatbodol/modules/location/bindings/location_binding.dart';
 import 'package:hatbodol/modules/location/views/location_permission_view.dart';
 import 'package:hatbodol/modules/new_post/bindings/new_post_binding.dart';
@@ -85,6 +89,16 @@ class MyApp extends StatelessWidget {
               name: '/search',
               page: () => const SearchResultsView(),
               binding: SearchResultsBinding(),
+            ),
+            GetPage(
+              name: '/chat',
+              page: () => const ChatView(),
+              binding: ChatBinding(),
+            ),
+            GetPage(
+              name: '/chat-list',
+              page: () => const ChatListView(),
+              binding: ChatListBinding(),
             ),
           ],
         );

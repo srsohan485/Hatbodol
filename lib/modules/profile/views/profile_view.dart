@@ -33,9 +33,18 @@ class ProfileView extends GetView<ProfileController> {
                           color: AppColors.textDark,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () => Get.toNamed('/settings'),
-                        child: Icon(Icons.settings_outlined, size: 24.sp),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Get.toNamed('/chat-list'),
+                            child: Icon(Icons.chat_bubble_outline, size: 24.sp),
+                          ),
+                          SizedBox(width: 16.w),
+                          GestureDetector(
+                            onTap: () => Get.toNamed('/settings'),
+                            child: Icon(Icons.settings_outlined, size: 24.sp),
+                          ),
+                        ],
                       ),
                     ],
                   ),
