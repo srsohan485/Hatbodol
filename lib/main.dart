@@ -24,6 +24,13 @@ import 'modules/profile/views/profile_view.dart';
 import 'modules/settings/bindings/settings_binding.dart';
 import 'modules/settings/views/settings_view.dart';
 
+import 'modules/auth/bindings/auth_bindings.dart';
+import 'modules/auth/views/forgot_password_view.dart';
+import 'modules/auth/views/otp_view.dart';
+import 'modules/auth/views/reset_password_view.dart';
+import 'modules/auth/views/sign_in_view.dart';
+import 'modules/auth/views/sign_up_view.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -48,7 +55,7 @@ class MyApp extends StatelessWidget {
             // pubspec.yaml e font add korle ekhane name dao
             // fontFamily: 'HindSiliguri',
           ),
-          initialRoute: '/home',
+          initialRoute: '/sign-in',
           getPages: [
             GetPage(
               name: '/home',
@@ -99,6 +106,31 @@ class MyApp extends StatelessWidget {
               name: '/chat-list',
               page: () => const ChatListView(),
               binding: ChatListBinding(),
+            ),
+            GetPage(
+              name: '/sign-in',
+              page: () => const SignInView(),
+              binding: SignInBinding(),
+            ),
+            GetPage(
+              name: '/sign-up',
+              page: () => const SignUpView(),
+              binding: SignUpBinding(),
+            ),
+            GetPage(
+              name: '/forgot-password',
+              page: () => const ForgotPasswordView(),
+              binding: ForgotPasswordBinding(),
+            ),
+            GetPage(
+              name: '/otp',
+              page: () => const OtpView(),
+              binding: OtpBinding(),
+            ),
+            GetPage(
+              name: '/reset-password',
+              page: () => const ResetPasswordView(),
+              binding: ResetPasswordBinding(),
             ),
           ],
         );
