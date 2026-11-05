@@ -17,3 +17,14 @@ String bnPrice(num value) {
       );
   return toBn(s);
 }
+
+/// বাংলা সংখ্যাকে ইংরেজি সংখ্যায় বদলায়: ০১৭ -> 017
+String toEn(String value) {
+  const en = '0123456789';
+  const bn = '০১২৩৪৫৬৭৮৯';
+  var s = value;
+  for (var i = 0; i < bn.length; i++) {
+    s = s.replaceAll(bn[i], en[i]);
+  }
+  return s;
+}

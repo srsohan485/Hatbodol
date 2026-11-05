@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:hatbodol/core/middleware/profile_guard.dart';
+import 'package:hatbodol/core/services/profile_session.dart';
 import 'package:hatbodol/modules/chat/bindings/chat_binding.dart';
 import 'package:hatbodol/modules/chat/bindings/chat_list_binding.dart';
 import 'package:hatbodol/modules/chat/views/chat_list_view.dart';
 import 'package:hatbodol/modules/chat/views/chat_view.dart';
+import 'package:hatbodol/modules/create_profile/bindings/create_profile_binding.dart';
+import 'package:hatbodol/modules/create_profile/views/create_profile_view.dart';
 import 'package:hatbodol/modules/location/bindings/location_binding.dart';
 import 'package:hatbodol/modules/location/views/location_permission_view.dart';
 import 'package:hatbodol/modules/new_post/bindings/new_post_binding.dart';
@@ -32,6 +36,8 @@ import 'modules/auth/views/sign_in_view.dart';
 import 'modules/auth/views/sign_up_view.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  Get.put(ProfileSession(), permanent: true);
   runApp(const MyApp());
 }
 
@@ -71,6 +77,12 @@ class MyApp extends StatelessWidget {
               name: '/profile',
               page: () => const ProfileView(),
               binding: ProfileBinding(),
+              middlewares: [ProfileGuard()],
+            ),
+            GetPage(
+              name: '/create-profile',
+              page: () => const CreateProfileView(),
+              binding: CreateProfileBinding(),
             ),
             GetPage(
               name: '/settings',

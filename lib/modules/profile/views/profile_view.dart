@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:hatbodol/core/services/profile_session.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/bn_number.dart';
@@ -43,6 +44,20 @@ class ProfileView extends GetView<ProfileController> {
                           GestureDetector(
                             onTap: () => Get.toNamed('/settings'),
                             child: Icon(Icons.settings_outlined, size: 24.sp),
+                          ),
+                          SizedBox(width: 12.w),
+                          PopupMenuButton<String>(
+                            icon: Icon(Icons.more_vert, size: 24.sp),
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'edit_profile',
+                                child: Text('Edit Profile'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete_account',
+                                child: Text('Delete Account'),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -122,60 +137,73 @@ class _ProfileInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 32.r,
-          backgroundImage: const AssetImage('assets/images/avatar.jpg'),
-        ),
-        SizedBox(width: 12.w),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'রাফসান আহমেদ',
-              style: TextStyle(
-                fontSize: 18.sp,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textDark,
-              ),
-            ),
-            SizedBox(height: 4.h),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(6.r),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.verified_user_outlined,
-                    size: 12.sp,
-                    color: AppColors.primary,
+    final session = Get.find<ProfileSession>();
+    return Obx(() {
+      final name = session.name.value;
+      final area = session.area.value;
+      final photo = session.photo.value;
+
+      return Row(
+        children: [
+          CircleAvatar(
+            radius: 32.r,
+            backgroundColor: AppColors.primaryLight,
+            backgroundImage: photo != null ? AssetImage(photo) : null,
+            child: photo == null
+                ? Icon(Icons.person, size: 32.sp, color: AppColors.primary)
+                : null,
+          ),
+          SizedBox(width: 12.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textDark,
                   ),
-                  SizedBox(width: 4.w),
-                  Text(
-                    'ফোন নম্বর যাচাইকৃত',
-                    style: TextStyle(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                    ),
+                ),
+                SizedBox(height: 4.h),
+                Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(6.r),
                   ),
-                ],
-              ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.verified_user_outlined,
+                          size: 12.sp, color: AppColors.primary),
+                      SizedBox(width: 4.w),
+                      Text(
+                        'ফোন নম্বর যাচাইকৃত',
+                        style: TextStyle(
+                          fontSize: 10.sp,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  area,
+                  style: TextStyle(fontSize: 12.sp, color: AppColors.textGrey),
+                ),
+              ],
             ),
-            SizedBox(height: 4.h),
-            Text(
-              'ধানমন্ডি, ঢাকা',
-              style: TextStyle(fontSize: 12.sp, color: AppColors.textGrey),
-            ),
-          ],
-        ),
-      ],
-    );
+          ),
+        ],
+      );
+    });
   }
 }
 

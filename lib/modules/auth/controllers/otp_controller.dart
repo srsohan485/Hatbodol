@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/services/profile_session.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../widgets/email_verified_dialog.dart';
 
@@ -13,13 +14,18 @@ class OtpController extends GetxController {
 
   Timer? _timer;
   late final String email;
-  late final String flow; // 'signup' বা 'forgot'
+  late final String phone;
+  late final String flow; // 'signup', 'forgot' বা 'profile'
+
+  /// 'profile' ফ্লোতে কোড ফোনে যায়, বাকিগুলোতে ইমেইলে
+  String get channel => flow == 'profile' ? 'phone' : 'email';
 
   @override
   void onInit() {
     super.onInit();
     final args = (Get.arguments as Map?) ?? {};
     email = (args['email'] as String?) ?? '';
+    phone = (args['phone'] as String?) ?? '';
     flow = (args['flow'] as String?) ?? 'signup';
     _startTimer();
   }
@@ -49,7 +55,7 @@ class OtpController extends GetxController {
     if (!canResend) return;
     // TODO: এখানে OTP আবার পাঠানোর API কল বসবে
     _startTimer();
-    showSuccess('A new code has been sent to your email');
+    showSuccess('A new code has been sent to your $channel');
   }
 
   Future<void> submit() async {
@@ -66,6 +72,13 @@ class OtpController extends GetxController {
 
       if (flow == 'forgot') {
         Get.offNamed('/reset-password', arguments: {'email': email});
+      } else if (flow == 'profile') {
+        Get.find<ProfileSession>().complete();
+        // OTP আর প্রোফাইল তৈরির পেজ সরিয়ে প্রোফাইল পেজ খোলে, নিচে হোম থাকে
+        Get.offNamedUntil(
+          '/profile',
+          (route) => route.settings.name == '/home',
+        );
       } else {
         Get.dialog(
           EmailVerifiedDialog(email: email),

@@ -30,7 +30,7 @@ class OtpView extends GetView<OtpController> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'We sent a verification code to your email. Please check.',
+            'We sent a verification code to your ${controller.channel}. Please check.',
             textAlign: TextAlign.center,
             style: small,
           ),
