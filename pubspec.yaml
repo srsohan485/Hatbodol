@@ -37,6 +37,8 @@ dependencies:
   get: ^4.7.3
   flutter_screenutil: ^5.9.3
   font_awesome_flutter: ^11.0.0
+  http: ^1.6.0
+  get_storage: ^2.1.1
 
 dev_dependencies:
   flutter_test:

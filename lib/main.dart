@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:hatbodol/Services/ApiService.dart';
 import 'package:hatbodol/core/middleware/profile_guard.dart';
 import 'package:hatbodol/core/services/profile_session.dart';
 import 'package:hatbodol/modules/chat/bindings/chat_binding.dart';
@@ -38,6 +39,7 @@ import 'modules/auth/views/sign_up_view.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   Get.put(ProfileSession(), permanent: true);
+  Get.put(ApiServices(baseUrl: 'http://127.0.0.1:8000/api'));
   runApp(const MyApp());
 }
 
