@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:hatbodol/Services/location_session.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/bn_number.dart';
@@ -126,7 +127,12 @@ class FilterSheet extends GetView<SearchResultsController> {
             SizedBox(height: 8.h),
 
             // দূরত্ব
-            _label('দূরত্ব - ধানমন্ডি, ঢাকা থেকে'),
+            Obx(() {
+              final name = LocationSession.areaName.value;
+              return _label(
+                name.isEmpty ? 'দূরত্ব' : 'দূরত্ব - $name থেকে',
+              );
+            }),
             SizedBox(height: 8.h),
             Obx(() {
               final selected = controller.tDistance.value;

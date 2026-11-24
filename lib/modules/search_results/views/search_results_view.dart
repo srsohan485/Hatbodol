@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:hatbodol/Services/location_session.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/bn_number.dart';
 import '../../../core/widgets/app_bottom_nav.dart';
+import '../../home/models/product_model.dart';
 import '../controllers/search_results_controller.dart';
 import '../widgets/filter_sheet.dart';
 
@@ -66,10 +68,13 @@ class SearchResultsView extends GetView<SearchResultsController> {
             padding: EdgeInsets.symmetric(horizontal: 16.w),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                'ধানমন্ডি, ঢাকা থেকে আশেপাশে',
-                style: TextStyle(fontSize: 11.sp, color: AppColors.textGrey),
-              ),
+              child: Obx(() {
+                final name = LocationSession.areaName.value;
+                return Text(
+                  name.isEmpty ? 'আশেপাশে' : '$name থেকে আশেপাশে',
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.textGrey),
+                );
+              }),
             ),
           ),
           SizedBox(height: 6.h),
@@ -94,6 +99,36 @@ class SearchResultsView extends GetView<SearchResultsController> {
           Expanded(
             child: Obx(() {
               final items = controller.results;
+              final loadingMore = controller.isLoadingMore.value;
+
+              if (controller.isLoading.value && items.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (controller.errorMessage.value.isNotEmpty && items.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24.w),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          controller.errorMessage.value,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            color: AppColors.textGrey,
+                          ),
+                        ),
+                        SizedBox(height: 12.h),
+                        ElevatedButton(
+                          onPressed: controller.fetchResults,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
               if (items.isEmpty) {
                 return Center(
                   child: Text(
@@ -106,10 +141,19 @@ class SearchResultsView extends GetView<SearchResultsController> {
                 );
               }
               return ListView.separated(
+                controller: controller.scrollCtrl,
                 padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-                itemCount: items.length,
+                itemCount: items.length + (loadingMore ? 1 : 0),
                 separatorBuilder: (_, _) => SizedBox(height: 12.h),
-                itemBuilder: (_, i) => _ResultCard(item: items[i]),
+                itemBuilder: (_, i) {
+                  if (i >= items.length) {
+                    return Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                      child: const Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  return _ResultCard(item: items[i]);
+                },
               );
             }),
           ),
@@ -161,16 +205,16 @@ class SearchResultsView extends GetView<SearchResultsController> {
             ),
           ),
           Obx(
-            () => controller.query.value.isEmpty
+                () => controller.query.value.isEmpty
                 ? const SizedBox.shrink()
                 : GestureDetector(
-                    onTap: controller.clearQuery,
-                    child: Icon(
-                      Icons.close,
-                      size: 20.sp,
-                      color: AppColors.textDark,
-                    ),
-                  ),
+              onTap: controller.clearQuery,
+              child: Icon(
+                Icons.close,
+                size: 20.sp,
+                color: AppColors.textDark,
+              ),
+            ),
           ),
         ],
       ),
@@ -238,14 +282,47 @@ class SearchResultsView extends GetView<SearchResultsController> {
 }
 
 class _ResultCard extends StatelessWidget {
-  final SearchItem item;
+  final ProductModel item;
   const _ResultCard({required this.item});
+
+  Widget _placeholder(IconData icon) => Container(
+    width: 100.w,
+    height: double.infinity,
+    color: Colors.grey.shade200,
+    child: Center(child: Icon(icon)),
+  );
+
+  Widget _thumb() {
+    final img = item.image;
+    if (img.isEmpty) return _placeholder(Icons.image_outlined);
+    if (img.startsWith('http')) {
+      return Image.network(
+        img,
+        width: 100.w,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        cacheWidth: 300,
+        errorBuilder: (_, __, ___) =>
+            _placeholder(Icons.image_not_supported_outlined),
+      );
+    }
+    return Image.asset(
+      img,
+      width: 100.w,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      cacheWidth: 300,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => Get.toNamed('/product-details'),
+      onTap: () => Get.toNamed(
+        '/product-details',
+        arguments: {'id': item.id},
+      ),
       child: Container(
         height: 100.h,
         decoration: BoxDecoration(
@@ -255,13 +332,7 @@ class _ResultCard extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: Row(
           children: [
-            Image.asset(
-              item.image,
-              width: 100.w,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              cacheWidth: 300,
-            ),
+            _thumb(),
             Expanded(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12.w),
@@ -281,7 +352,7 @@ class _ResultCard extends StatelessWidget {
                     ),
                     SizedBox(height: 4.h),
                     Text(
-                      '৳ ${bnPrice(item.price)}',
+                      item.price,
                       style: TextStyle(
                         fontSize: 18.sp,
                         fontWeight: FontWeight.w800,
@@ -297,11 +368,15 @@ class _ResultCard extends StatelessWidget {
                           color: AppColors.textGrey,
                         ),
                         SizedBox(width: 2.w),
-                        Text(
-                          '${toBn(item.distanceKm)} কিমি দূর',
-                          style: TextStyle(
-                            fontSize: 11.sp,
-                            color: AppColors.textGrey,
+                        Expanded(
+                          child: Text(
+                            item.distance,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11.sp,
+                              color: AppColors.textGrey,
+                            ),
                           ),
                         ),
                       ],

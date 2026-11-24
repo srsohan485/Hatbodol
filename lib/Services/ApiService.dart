@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:hatbodol/Services/AppLog.dart';
 import 'package:http/http.dart' as http;
 
-
 class ApiServices {
   final String baseUrl;
   final http.Client _httpClient;
@@ -65,7 +64,7 @@ class ApiServices {
       return decoded;
     }
     AppLog.error(endpoint, response.body, statusCode: response.statusCode);
-    throw HttpException(
+    throw ApiException(
       message: "Request failed",
       statusCode: response.statusCode,
       uri: url,
@@ -74,13 +73,13 @@ class ApiServices {
   }
 }
 
-class HttpException implements Exception {
+class ApiException implements Exception {
   final String message;
   final int statusCode;
   final Uri uri;
   final String? body;
 
-  HttpException({
+  ApiException({
     required this.message,
     required this.statusCode,
     required this.uri,
@@ -89,5 +88,5 @@ class HttpException implements Exception {
 
   @override
   String toString() =>
-      "HttpException(status code: $statusCode, uri: $uri, message: $message, body: $body)";
+      "ApiException(status code: $statusCode, uri: $uri, message: $message, body: $body)";
 }

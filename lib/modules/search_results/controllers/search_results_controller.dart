@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:hatbodol/Services/ApiService.dart';
+import 'package:hatbodol/Services/StorageService.dart';
+import 'package:hatbodol/Services/location_session.dart';
+import 'package:hatbodol/core/utils/app_error.dart';
+import 'package:hatbodol/core/utils/app_snackbar.dart';
+import 'package:hatbodol/modules/home/models/product_model.dart';
 
 class SearchItem {
   final String title;
@@ -19,10 +25,27 @@ class SearchItem {
   });
 }
 
+
+
 class SearchResultsController extends GetxController {
+  final _api = Get.find<ApiServices>();
+
+  // query param এর নাম। ⚠️ lat/lng/radius ব্যাকএন্ডের সাথে মিলিয়ে নিন
+  static const _queryParam = 'q';
+  static const _latParam = 'lat';
+  static const _lngParam = 'lng';
+  static const _radiusParam = 'radius';
+
   static const maxPrice = 65000.0;
 
-  final categories = const ['সব', 'বই', 'ফোন', 'ল্যাপটপ', 'আসবাব', 'অন্যান্য'];
+  final categories = <String>[
+    'সব',
+    'বই',
+    'ফোন',
+    'ল্যাপটপ',
+    'আসবাব',
+    'অন্যান্য',
+  ].obs;
   final distanceOptions = const [5, 10, 20];
 
   // সার্চ বক্স
@@ -42,74 +65,159 @@ class SearchResultsController extends GetxController {
   final tDistance = 10.obs;
   final tCondition = RxnBool();
 
-  // ডামি ডেটা, পরে এখানে API-র ডেটা বসবে
-  static const _all = <SearchItem>[
-    SearchItem(
-      title: 'কাঠের পড়ার টেবিল',
-      price: 3200,
-      distanceKm: 1.2,
-      image: 'assets/images/table.jpg',
-      category: 'আসবাব',
-      isUsed: true,
-    ),
-    SearchItem(
-      title: 'স্যামসাং গ্যালাক্সি এ৫২',
-      price: 4500,
-      distanceKm: 0.8,
-      image: 'assets/images/phone.jpg',
-      category: 'ফোন',
-      isUsed: true,
-    ),
-    SearchItem(
-      title: 'গল্পের বইয়ের সংগ্রহ',
-      price: 650,
-      distanceKm: 2.5,
-      image: 'assets/images/books.jpg',
-      category: 'বই',
-      isUsed: true,
-    ),
-    SearchItem(
-      title: 'আরামদায়ক অফিস চেয়ার',
-      price: 2800,
-      distanceKm: 0.5,
-      image: 'assets/images/chair.jpg',
-      category: 'আসবাব',
-      isUsed: false,
-    ),
-    SearchItem(
-      title: 'ডেল ল্যাপটপ',
-      price: 38000,
-      distanceKm: 15,
-      image: 'assets/images/phone.jpg',
-      category: 'ল্যাপটপ',
-      isUsed: true,
-    ),
-  ];
+  // সার্ভার থেকে আসা ফলাফল
+  final items = <ProductModel>[].obs;
+  final isLoading = false.obs;
+  final isLoadingMore = false.obs;
+  final errorMessage = ''.obs;
+
+  final scrollCtrl = ScrollController();
+  int _page = 1;
+  bool _hasNext = false;
+  int _reqId = 0; // পুরনো রেসপন্স বাদ দিতে
+  late final Worker _queryWorker;
+
+  Map<String, String> get _authHeader =>
+      {'Authorization': 'Bearer ${StorageService.accessToken}'};
 
   @override
   void onInit() {
     super.onInit();
     // ডিজাইনের মতো শুরুতে "ব্যবহৃত" বাছাই করা থাকবে
     condition.value = true;
+    scrollCtrl.addListener(_onScroll);
+    // টাইপ থামার ০.৪ সেকেন্ড পরে সার্চ
+    _queryWorker = debounce(
+      query,
+          (_) => fetchResults(),
+      time: const Duration(milliseconds: 400),
+    );
+    fetchCategories();
+    fetchResults();
   }
 
-  /// Obx-এর ভেতর থেকে ডাকতে হবে। সব Rx আগে পড়ে নেওয়া হয়েছে,
-  /// যাতে যেকোনো ফিল্টার বদলালে তালিকা আবার আঁকা হয়।
-  List<SearchItem> get results {
-    final q = query.value.trim();
+  /// Obx-এর ভেতর থেকে ডাকতে হবে। সার্ভারের ফলাফলের উপর
+  /// ক্যাটাগরি, দাম ও অবস্থার ফিল্টার অ্যাপে প্রয়োগ হয়।
+  List<ProductModel> get results {
     final cat = category.value;
     final range = priceRange.value;
     final km = distance.value;
     final cond = condition.value;
 
-    return _all.where((e) {
-      if (q.isNotEmpty && !e.title.contains(q)) return false;
-      if (cat != 'সব' && e.category != cat) return false;
-      if (e.price < range.start || e.price > range.end) return false;
-      if (e.distanceKm > km) return false;
-      if (cond != null && e.isUsed != cond) return false;
+    return items.where((p) {
+      if (cat != 'সব' && p.category != cat) return false;
+      if (p.priceValue < range.start) return false;
+      if (range.end < maxPrice && p.priceValue > range.end) return false;
+      if (p.distanceKm != null && p.distanceKm! > km) return false;
+      if (cond != null && p.isUsed != cond) return false;
       return true;
     }).toList();
+  }
+
+  String _url(int page) {
+    final params = <String, String>{'page': '$page'};
+    final q = query.value.trim();
+    if (q.isNotEmpty) params[_queryParam] = q;
+
+    final lat = LocationSession.latitude;
+    final lng = LocationSession.longitude;
+    if (LocationSession.hasArea && lat != null && lng != null) {
+      params[_latParam] = '$lat';
+      params[_lngParam] = '$lng';
+      params[_radiusParam] = '${distance.value}';
+    }
+    // Uri বাংলা অক্ষর নিরাপদে এনকোড করে
+    return '/products/?${Uri(queryParameters: params).query}';
+  }
+
+  Future<void> fetchCategories() async {
+    try {
+      final res =
+      await _api.get('/products/categories/', headers: _authHeader);
+      final names = ((res as List?) ?? [])
+          .map((e) => ((e as Map)['name'] ?? '').toString())
+          .where((n) => n.isNotEmpty)
+          .toList();
+      if (names.isEmpty) return;
+      categories.assignAll(['সব', ...names]);
+    } catch (_) {
+      // ডিফল্ট ক্যাটাগরি দিয়েই চলবে
+    }
+  }
+
+  /// প্রথম পেজ থেকে নতুন করে সার্চ
+  Future<void> fetchResults() async {
+    final id = ++_reqId;
+    isLoading.value = true;
+    isLoadingMore.value = false;
+    errorMessage.value = '';
+    try {
+      final res = await _api.get(_url(1), headers: _authHeader)
+      as Map<String, dynamic>;
+      if (id != _reqId) return; // এর মধ্যে নতুন সার্চ শুরু হয়ে গেছে
+      final list = (res['results'] as List?) ?? [];
+      items.assignAll(
+        list.map((e) => ProductModel.fromJson(e as Map<String, dynamic>)),
+      );
+      _page = (res['page'] as num?)?.toInt() ?? 1;
+      _hasNext = res['has_next'] == true;
+    } catch (e) {
+      if (id != _reqId) return;
+      _handleError(e, 'Search failed. Please try again.');
+    } finally {
+      if (id == _reqId) isLoading.value = false;
+    }
+  }
+
+  void _onScroll() {
+    if (!scrollCtrl.hasClients) return;
+    final pos = scrollCtrl.position;
+    if (pos.pixels >= pos.maxScrollExtent - 300) loadMore();
+  }
+
+  Future<void> loadMore() async {
+    if (!_hasNext || isLoading.value || isLoadingMore.value) return;
+    final id = _reqId;
+    isLoadingMore.value = true;
+    try {
+      final res = await _api.get(_url(_page + 1), headers: _authHeader)
+      as Map<String, dynamic>;
+      if (id != _reqId) return;
+      final list = (res['results'] as List?) ?? [];
+      items.addAll(
+        list.map((e) => ProductModel.fromJson(e as Map<String, dynamic>)),
+      );
+      _page = (res['page'] as num?)?.toInt() ?? _page + 1;
+      _hasNext = res['has_next'] == true;
+    } catch (e) {
+      if (id != _reqId) return;
+      _handleError(e, 'Could not load more results.', silent: true);
+    } finally {
+      isLoadingMore.value = false;
+    }
+  }
+
+  int? _statusOf(Object e) {
+    try {
+      return (e as dynamic).statusCode as int?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _handleError(Object e, String fallback, {bool silent = false}) {
+    if (_statusOf(e) == 401) {
+      StorageService.clearToken();
+      Get.offAllNamed('/sign-in');
+      showError('Session expired. Please sign in again.');
+      return;
+    }
+    final msg = apiErrorMessage(e, fallback: fallback);
+    if (silent) {
+      showError(msg);
+    } else {
+      errorMessage.value = msg;
+    }
   }
 
   void onQueryChanged(String v) => query.value = v;
@@ -133,6 +241,7 @@ class SearchResultsController extends GetxController {
     distance.value = tDistance.value;
     condition.value = tCondition.value;
     Get.back();
+    fetchResults(); // দূরত্ব সার্ভারে যায়, তাই আবার লোড
   }
 
   void resetFilter() {
@@ -149,6 +258,8 @@ class SearchResultsController extends GetxController {
 
   @override
   void onClose() {
+    _queryWorker.dispose();
+    scrollCtrl.dispose();
     queryCtrl.dispose();
     queryFocus.dispose();
     super.onClose();

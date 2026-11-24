@@ -38,10 +38,15 @@ class DistanceSheet extends GetView<HomeController> {
               ),
             ),
             SizedBox(height: 4.h),
-            Text(
-              'ধানমন্ডি, ঢাকা থেকে আশেপাশের বিজ্ঞাপন',
-              style: TextStyle(fontSize: 12.sp, color: AppColors.textGrey),
-            ),
+            Obx(() {
+              final name = controller.areaName.value;
+              return Text(
+                name.isEmpty
+                    ? 'আশেপাশের বিজ্ঞাপন'
+                    : '$name থেকে আশেপাশের বিজ্ঞাপন',
+                style: TextStyle(fontSize: 12.sp, color: AppColors.textGrey),
+              );
+            }),
             SizedBox(height: 14.h),
             Obx(() {
               final temp = controller.tempDistance.value;

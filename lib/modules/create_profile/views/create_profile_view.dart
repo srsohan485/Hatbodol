@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:hatbodol/core/widgets/app_bottom_nav.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../controllers/create_profile_controller.dart';
@@ -163,6 +164,14 @@ class CreateProfileView extends GetView<CreateProfileController> {
               ),
             ],
           ),
+        ),
+        bottomNavigationBar: AppBottomNav(
+          currentIndex: 3,
+          onTap: (i) {
+            if (i == 0) Get.offAllNamed('/home');
+            if (i == 1) Get.toNamed('/search');
+            if (i == 2) Get.toNamed('/new-post');
+          },
         ),
       ),
     );

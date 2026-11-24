@@ -8,6 +8,44 @@ class ProductCard extends StatelessWidget {
   final ProductModel product;
   const ProductCard({super.key, required this.product});
 
+  Widget _buildImage() {
+    final img = product.image;
+
+    if (img.isEmpty) {
+      return Container(
+        color: Colors.grey.shade200,
+        child: const Center(child: Icon(Icons.image_outlined)),
+      );
+    }
+
+    if (img.startsWith('http')) {
+      return Image.network(
+        img,
+        fit: BoxFit.cover,
+        cacheWidth: 400,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return Container(
+            color: Colors.grey.shade200,
+            child: const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (_, __, ___) => Container(
+          color: Colors.grey.shade200,
+          child: const Center(child: Icon(Icons.image_not_supported_outlined)),
+        ),
+      );
+    }
+
+    return Image.asset(img, fit: BoxFit.cover, cacheWidth: 400);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -23,7 +61,7 @@ class ProductCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.asset(product.image, fit: BoxFit.cover, cacheWidth: 400),
+                _buildImage(),
                 Positioned(
                   top: 8.h,
                   right: 8.w,
@@ -34,9 +72,9 @@ class ProductCard extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.favorite_border,
+                      product.isSaved ? Icons.favorite : Icons.favorite_border,
                       size: 16.sp,
-                      color: AppColors.textDark,
+                      color: product.isSaved ? Colors.red : AppColors.textDark,
                     ),
                   ),
                 ),
@@ -109,11 +147,15 @@ class ProductCard extends StatelessWidget {
                       color: AppColors.textGrey,
                     ),
                     SizedBox(width: 2.w),
-                    Text(
-                      product.distance,
-                      style: TextStyle(
-                        fontSize: 11.sp,
-                        color: AppColors.textGrey,
+                    Expanded(
+                      child: Text(
+                        product.distance,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          color: AppColors.textGrey,
+                        ),
                       ),
                     ),
                   ],

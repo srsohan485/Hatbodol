@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:hatbodol/Services/ApiService.dart';
 import 'package:hatbodol/core/middleware/profile_guard.dart';
 import 'package:hatbodol/core/services/profile_session.dart';
@@ -36,10 +37,11 @@ import 'modules/auth/views/reset_password_view.dart';
 import 'modules/auth/views/sign_in_view.dart';
 import 'modules/auth/views/sign_up_view.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init();
   Get.put(ProfileSession(), permanent: true);
-  Get.put(ApiServices(baseUrl: 'http://127.0.0.1:8000/api'));
+  Get.put(ApiServices(baseUrl: 'http://127.0.0.1:8000/api'), permanent: true);
   runApp(const MyApp());
 }
 

@@ -26,35 +26,48 @@ class HomeHeader extends GetView<HomeController> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => Get.toNamed('/location-permission'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'আপনার এলাকা',
-                style: TextStyle(fontSize: 11.sp, color: AppColors.textGrey),
-              ),
-              SizedBox(height: 2.h),
-              Row(
-                children: [
-                  Icon(Icons.location_on,
-                      size: 18.sp, color: AppColors.primary),
-                  SizedBox(width: 4.w),
-                  Text(
-                    'ধানমন্ডি, ঢাকা',
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark,
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            // এলাকা বাছাই পেজ খোলে, ফিরে এলে নাম নিজে থেকেই বদলে যায়
+            onTap: () => Get.toNamed('/location-permission'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'আপনার এলাকা',
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.textGrey),
+                ),
+                SizedBox(height: 2.h),
+                Row(
+                  children: [
+                    Icon(Icons.location_on,
+                        size: 18.sp, color: AppColors.primary),
+                    SizedBox(width: 4.w),
+                    Flexible(
+                      child: Obx(() {
+                        final name = controller.areaName.value;
+                        return Text(
+                          name.isEmpty ? 'এলাকা বাছুন' : name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                            color: name.isEmpty
+                                ? AppColors.textGrey
+                                : AppColors.textDark,
+                          ),
+                        );
+                      }),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
+        SizedBox(width: 8.w),
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _openDistanceSheet,
@@ -67,7 +80,7 @@ class HomeHeader extends GetView<HomeController> {
             child: Row(
               children: [
                 Obx(
-                  () => Text(
+                      () => Text(
                     '${toBn(controller.selectedDistance.value)} কিমির মধ্যে',
                     style: TextStyle(
                       fontSize: 12.sp,

@@ -18,10 +18,10 @@ class HomeView extends GetView<HomeController> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerDown: (e) => debugPrint('pointer down: ${e.position}'),
+        child: RefreshIndicator(
+          onRefresh: controller.fetchProducts,
           child: CustomScrollView(
+            controller: controller.scrollCtrl,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverPadding(
@@ -59,11 +59,61 @@ class HomeView extends GetView<HomeController> {
                   ]),
                 ),
               ),
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-                sliver: Obx(() {
-                  final items = controller.products.toList();
-                  return SliverGrid.builder(
+              Obx(() {
+                // প্রথমবার লোড হচ্ছে
+                if (controller.isLoading.value && controller.products.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 60.h),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                  );
+                }
+                // error আর কোনো ডেটা নেই
+                if (controller.errorMessage.value.isNotEmpty &&
+                    controller.products.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                          vertical: 40.h, horizontal: 24.w),
+                      child: Column(
+                        children: [
+                          Text(
+                            controller.errorMessage.value,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 13.sp, color: AppColors.textGrey),
+                          ),
+                          SizedBox(height: 12.h),
+                          ElevatedButton(
+                            onPressed: controller.fetchProducts,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final items = controller.visibleProducts;
+                if (items.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 60.h),
+                      child: Center(
+                        child: Text(
+                          'কোনো পণ্য পাওয়া যায়নি',
+                          style: TextStyle(
+                              fontSize: 13.sp, color: AppColors.textGrey),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                return SliverPadding(
+                  padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+                  sliver: SliverGrid.builder(
                     itemCount: items.length,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
@@ -73,12 +123,25 @@ class HomeView extends GetView<HomeController> {
                     ),
                     itemBuilder: (_, i) => GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => Get.toNamed('/product-details'),
+                      onTap: () => Get.toNamed(
+                        '/product-details',
+                        arguments: {'id': items[i].id},
+                      ),
                       child: ProductCard(product: items[i]),
                     ),
-                  );
-                }),
-              ),
+                  ),
+                );
+              }),
+              // পরের পেজ লোড হওয়ার স্পিনার
+              Obx(() => SliverToBoxAdapter(
+                child: controller.isLoadingMore.value
+                    ? Padding(
+                  padding: EdgeInsets.only(bottom: 16.h),
+                  child: const Center(
+                      child: CircularProgressIndicator()),
+                )
+                    : const SizedBox.shrink(),
+              )),
             ],
           ),
         ),
