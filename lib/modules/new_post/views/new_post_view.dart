@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 
@@ -51,6 +54,7 @@ class NewPostView extends GetView<NewPostController> {
               SizedBox(height: 6.h),
               TextField(
                 controller: controller.titleCtrl,
+                textInputAction: TextInputAction.next,
                 style: _inputStyle,
                 decoration: _decoration('যেমন: কাঠের পড়ার টেবিল'),
               ),
@@ -67,8 +71,15 @@ class NewPostView extends GetView<NewPostController> {
                         TextField(
                           controller: controller.priceCtrl,
                           keyboardType: TextInputType.number,
+                          maxLength: 9,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9০-৯]'),
+                            ),
+                          ],
                           style: _inputStyle,
-                          decoration: _decoration('০'),
+                          decoration:
+                          _decoration('০').copyWith(counterText: ''),
                         ),
                       ],
                     ),
@@ -113,23 +124,36 @@ class NewPostView extends GetView<NewPostController> {
           color: AppColors.background,
           child: SafeArea(
             top: false,
-            child: SizedBox(
-              height: 50.h,
-              child: ElevatedButton(
-                onPressed: controller.publish,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12.r),
+            child: Obx(
+                  () => SizedBox(
+                height: 50.h,
+                child: ElevatedButton(
+                  onPressed:
+                  controller.isLoading.value ? null : controller.publish,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
                   ),
-                ),
-                child: Text(
-                  'পোস্ট প্রকাশ করুন',
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w800,
+                  child: controller.isLoading.value
+                      ? SizedBox(
+                    width: 20.w,
+                    height: 20.w,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : Text(
+                    'পোস্ট প্রকাশ করুন',
+                    style: TextStyle(
+                      fontSize: 15.sp,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
@@ -144,19 +168,19 @@ class NewPostView extends GetView<NewPostController> {
       TextStyle(fontSize: 14.sp, color: AppColors.textDark);
 
   Widget _label(String text) => Text(
-        text,
-        style: TextStyle(
-          fontSize: 13.sp,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textDark,
-        ),
-      );
+    text,
+    style: TextStyle(
+      fontSize: 13.sp,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textDark,
+    ),
+  );
 
   InputDecoration _decoration(String hint) {
     OutlineInputBorder border(Color c) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          borderSide: BorderSide(color: c),
-        );
+      borderRadius: BorderRadius.circular(10.r),
+      borderSide: BorderSide(color: c),
+    );
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(fontSize: 13.sp, color: AppColors.textGrey),
@@ -173,13 +197,17 @@ class NewPostView extends GetView<NewPostController> {
   Widget _mediaHeader() {
     return Obx(() {
       final count = controller.images.length;
+      final video = controller.videoPath.value != null;
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _label('ছবি ও ভিডিও'),
-          if (count > 0)
+          if (count > 0 || video)
             Text(
-              '${toBn(count)}টি ছবি যোগ হয়েছে',
+              [
+                if (count > 0) '${toBn(count)}টি ছবি',
+                if (video) '১টি ভিডিও',
+              ].join(' · '),
               style: TextStyle(fontSize: 11.sp, color: AppColors.textGrey),
             ),
         ],
@@ -192,25 +220,42 @@ class NewPostView extends GetView<NewPostController> {
       height: 78.h,
       child: Obx(() {
         final images = controller.images.toList();
-        final video = controller.hasVideo.value;
+        final video = controller.videoPath.value;
         return ListView(
           scrollDirection: Axis.horizontal,
           children: [
-            for (var i = 0; i < images.length; i++)
-              _thumb(images[i], i),
-            _addBox(
-              icon: Icons.photo_camera_outlined,
-              label: 'ছবি যোগ করুন',
-              onTap: controller.addPhoto,
-            ),
-            _addBox(
-              icon: video ? Icons.check_circle_outline : Icons.videocam_outlined,
-              label: video ? 'ভিডিও যোগ হয়েছে' : 'ভিডিও যোগ করুন',
-              onTap: controller.addVideo,
-            ),
+            for (var i = 0; i < images.length; i++) _thumb(images[i], i),
+            if (images.length < NewPostController.maxImages)
+              _addBox(
+                icon: Icons.photo_camera_outlined,
+                label: 'ছবি যোগ করুন',
+                onTap: controller.addPhoto,
+              ),
+            if (video != null)
+              _videoThumb()
+            else
+              _addBox(
+                icon: Icons.videocam_outlined,
+                label: 'ভিডিও যোগ করুন',
+                onTap: controller.addVideo,
+              ),
           ],
         );
       }),
+    );
+  }
+
+  Widget _closeBadge(VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(3.w),
+        decoration: const BoxDecoration(
+          color: Colors.black87,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(Icons.close, size: 12.sp, color: Colors.white),
+      ),
     );
   }
 
@@ -225,22 +270,59 @@ class NewPostView extends GetView<NewPostController> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(10.r),
-              child: Image.asset(path, fit: BoxFit.cover, cacheWidth: 300),
+              child: Image.file(
+                File(path),
+                fit: BoxFit.cover,
+                cacheWidth: 300,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.grey.shade200,
+                  child: const Icon(Icons.image_not_supported_outlined),
+                ),
+              ),
             ),
             Positioned(
               top: 4.h,
               right: 4.w,
-              child: GestureDetector(
-                onTap: () => controller.removePhoto(index),
-                child: Container(
-                  padding: EdgeInsets.all(3.w),
-                  decoration: const BoxDecoration(
-                    color: Colors.black87,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.close, size: 12.sp, color: Colors.white),
-                ),
+              child: _closeBadge(() => controller.removePhoto(index)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _videoThumb() {
+    return Padding(
+      padding: EdgeInsets.only(right: 8.w),
+      child: SizedBox(
+        width: 78.w,
+        height: 78.h,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.textDark,
+                borderRadius: BorderRadius.circular(10.r),
               ),
+              child: Icon(
+                Icons.play_circle_outline,
+                size: 30.sp,
+                color: Colors.white,
+              ),
+            ),
+            Positioned(
+              left: 6.w,
+              bottom: 4.h,
+              child: Text(
+                'ভিডিও',
+                style: TextStyle(fontSize: 10.sp, color: Colors.white),
+              ),
+            ),
+            Positioned(
+              top: 4.h,
+              right: 4.w,
+              child: _closeBadge(controller.removeVideo),
             ),
           ],
         ),
@@ -298,13 +380,18 @@ class NewPostView extends GetView<NewPostController> {
       ),
       child: Obx(() {
         final selected = controller.selectedCategory.value;
+        final items = controller.categories.toList();
         return DropdownButtonHideUnderline(
           child: DropdownButton<String>(
             value: selected,
             isExpanded: true,
+            hint: Text(
+              'লোড হচ্ছে...',
+              style: TextStyle(fontSize: 13.sp, color: AppColors.textGrey),
+            ),
             icon: Icon(Icons.keyboard_arrow_down, size: 22.sp),
             style: _inputStyle,
-            items: controller.categories
+            items: items
                 .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                 .toList(),
             onChanged: controller.setCategory,
@@ -370,14 +457,17 @@ class NewPostView extends GetView<NewPostController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'ধানমন্ডি, ঢাকা',
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textDark,
-                  ),
-                ),
+                Obx(() {
+                  final a = controller.areaName;
+                  return Text(
+                    a.isEmpty ? 'এলাকা বাছাই করা নেই' : a,
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDark,
+                    ),
+                  );
+                }),
                 SizedBox(height: 2.h),
                 Text(
                   'আপনার বর্তমান এলাকা স্বয়ংক্রিয়ভাবে যোগ হবে',

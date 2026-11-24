@@ -66,39 +66,41 @@ class ApiServices {
     return _handleResponse(response, url, endpoints);
   }
 
-  /// ফাইলসহ POST (multipart/form-data), ছবি আপলোডের জন্য
+  /// ফাইলসহ POST (multipart/form-data)। একই নামে একাধিক ফাইলও পাঠানো যায়
   Future<dynamic> postMultipart(
       String endpoints, {
         Map<String, String>? headers,
         Map<String, String> fields = const {},
         String? fileField,
         String? filePath,
+        List<MapEntry<String, String>> files = const [],
+        Duration timeout = const Duration(seconds: 60),
       }) async {
     final url = Uri.parse('$baseUrl$endpoints');
+    final allFiles = <MapEntry<String, String>>[
+      if (fileField != null && filePath != null) MapEntry(fileField, filePath),
+      ...files,
+    ];
     AppLog.request(endpoints, method: 'POST [multipart]', body: {
       ...fields,
-      if (filePath != null) (fileField ?? 'file'): filePath,
+      'files': allFiles.map((f) => '${f.key}: ${f.value}').toList(),
     });
 
     final request = http.MultipartRequest('POST', url);
     request.headers.addAll({'Accept': 'application/json', ...?headers});
     request.fields.addAll(fields);
-    if (fileField != null && filePath != null) {
-      request.files.add(await http.MultipartFile.fromPath(fileField, filePath));
+    for (final f in allFiles) {
+      request.files.add(await http.MultipartFile.fromPath(f.key, f.value));
     }
 
-    // নেটওয়ার্কের অংশটুকুই শুধু try এর ভেতরে
     late final http.Response response;
     try {
-      final streamed =
-      await _httpClient.send(request).timeout(const Duration(seconds: 60));
+      final streamed = await _httpClient.send(request).timeout(timeout);
       response = await http.Response.fromStream(streamed);
     } catch (e) {
       AppLog.error(endpoints, e.toString()); // নেটওয়ার্ক/টাইমআউট error লগে আসবে
       rethrow;
     }
-
-    // সার্ভারের error (৪xx/৫xx) এখানে আগের মতোই ছোড়া হবে
     return _handleResponse(response, url, endpoints);
   }
 
