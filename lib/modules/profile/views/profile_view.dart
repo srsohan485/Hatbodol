@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
-import 'package:hatbodol/core/services/profile_session.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/bn_number.dart';
@@ -48,6 +47,13 @@ class ProfileView extends GetView<ProfileController> {
                           SizedBox(width: 12.w),
                           PopupMenuButton<String>(
                             icon: Icon(Icons.more_vert, size: 24.sp),
+                            onSelected: (v) {
+                              if (v == 'edit_profile') {
+                                controller.editProfile();
+                              } else if (v == 'delete_account') {
+                                controller.confirmDeleteAccount();
+                              }
+                            },
                             itemBuilder: (context) => [
                               const PopupMenuItem(
                                 value: 'edit_profile',
@@ -69,7 +75,7 @@ class ProfileView extends GetView<ProfileController> {
                   const _Tabs(),
                   SizedBox(height: 14.h),
                   Obx(
-                    () => Row(
+                        () => Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
@@ -132,24 +138,47 @@ class ProfileView extends GetView<ProfileController> {
   }
 }
 
-class _ProfileInfo extends StatelessWidget {
+class _ProfileInfo extends GetView<ProfileController> {
   const _ProfileInfo();
 
   @override
   Widget build(BuildContext context) {
-    final session = Get.find<ProfileSession>();
     return Obx(() {
-      final name = session.name.value;
-      final area = session.area.value;
-      final photo = session.photo.value;
+      final p = controller.profile.value;
+
+      if (p == null) {
+        if (controller.isLoading.value) {
+          return SizedBox(
+            height: 72.h,
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        return Row(
+          children: [
+            Expanded(
+              child: Text(
+                controller.errorMessage.value.isEmpty
+                    ? 'প্রোফাইল লোড হয়নি'
+                    : controller.errorMessage.value,
+                style: TextStyle(fontSize: 12.sp, color: AppColors.textGrey),
+              ),
+            ),
+            TextButton(
+              onPressed: controller.fetchProfile,
+              child: const Text('Retry'),
+            ),
+          ],
+        );
+      }
 
       return Row(
         children: [
           CircleAvatar(
             radius: 32.r,
             backgroundColor: AppColors.primaryLight,
-            backgroundImage: photo != null ? AssetImage(photo) : null,
-            child: photo == null
+            backgroundImage:
+            p.photo.isNotEmpty ? NetworkImage(p.photo) : null,
+            child: p.photo.isEmpty
                 ? Icon(Icons.person, size: 32.sp, color: AppColors.primary)
                 : null,
           ),
@@ -159,7 +188,7 @@ class _ProfileInfo extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  name,
+                  p.displayName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -169,33 +198,35 @@ class _ProfileInfo extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 4.h),
-                Container(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(6.r),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.verified_user_outlined,
-                          size: 12.sp, color: AppColors.primary),
-                      SizedBox(width: 4.w),
-                      Text(
-                        'ফোন নম্বর যাচাইকৃত',
-                        style: TextStyle(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
+                if (p.isPhoneVerified) ...[
+                  Container(
+                    padding:
+                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(6.r),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.verified_user_outlined,
+                            size: 12.sp, color: AppColors.primary),
+                        SizedBox(width: 4.w),
+                        Text(
+                          'ফোন নম্বর যাচাইকৃত',
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                SizedBox(height: 4.h),
+                  SizedBox(height: 4.h),
+                ],
                 Text(
-                  area,
+                  p.area,
                   style: TextStyle(fontSize: 12.sp, color: AppColors.textGrey),
                 ),
               ],
@@ -327,12 +358,12 @@ class _PostCard extends GetView<ProfileController> {
               _action(
                 'বিক্রি হয়েছে',
                 AppColors.primary,
-                () => controller.markAsSold(index),
+                    () => controller.markAsSold(index),
               ),
               _action(
                 'মুছুন',
                 AppColors.danger,
-                () => controller.deletePost(index),
+                    () => controller.deletePost(index),
               ),
             ],
           ),

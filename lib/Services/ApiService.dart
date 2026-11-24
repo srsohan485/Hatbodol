@@ -26,7 +26,16 @@ class ApiServices {
     final url = Uri.parse('$baseUrl$endpoints');
     AppLog.request(endpoints, method: 'POST', body: body);
     final encodedBody = body != null ? jsonEncode(body) : null;
-    final response = await _httpClient.post(url, headers: {..._defaultHeader, ...?headers}, body: encodedBody);
+
+    late final http.Response response;
+    try {
+      response = await _httpClient
+          .post(url, headers: {..._defaultHeader, ...?headers}, body: encodedBody)
+          .timeout(const Duration(seconds: 20));
+    } catch (e) {
+      AppLog.error(endpoints, e.toString());
+      rethrow;
+    }
     return _handleResponse(response, url, endpoints);
   }
 
@@ -54,6 +63,42 @@ class ApiServices {
     request.fields.addAll(fields);
     final streamedResponse = await _httpClient.send(request);
     final response = await http.Response.fromStream(streamedResponse);
+    return _handleResponse(response, url, endpoints);
+  }
+
+  /// ফাইলসহ POST (multipart/form-data), ছবি আপলোডের জন্য
+  Future<dynamic> postMultipart(
+      String endpoints, {
+        Map<String, String>? headers,
+        Map<String, String> fields = const {},
+        String? fileField,
+        String? filePath,
+      }) async {
+    final url = Uri.parse('$baseUrl$endpoints');
+    AppLog.request(endpoints, method: 'POST [multipart]', body: {
+      ...fields,
+      if (filePath != null) (fileField ?? 'file'): filePath,
+    });
+
+    final request = http.MultipartRequest('POST', url);
+    request.headers.addAll({'Accept': 'application/json', ...?headers});
+    request.fields.addAll(fields);
+    if (fileField != null && filePath != null) {
+      request.files.add(await http.MultipartFile.fromPath(fileField, filePath));
+    }
+
+    // নেটওয়ার্কের অংশটুকুই শুধু try এর ভেতরে
+    late final http.Response response;
+    try {
+      final streamed =
+      await _httpClient.send(request).timeout(const Duration(seconds: 60));
+      response = await http.Response.fromStream(streamed);
+    } catch (e) {
+      AppLog.error(endpoints, e.toString()); // নেটওয়ার্ক/টাইমআউট error লগে আসবে
+      rethrow;
+    }
+
+    // সার্ভারের error (৪xx/৫xx) এখানে আগের মতোই ছোড়া হবে
     return _handleResponse(response, url, endpoints);
   }
 

@@ -1,5 +1,6 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:hatbodol/core/widgets/app_bottom_nav.dart';
@@ -12,6 +13,8 @@ class CreateProfileView extends GetView<CreateProfileController> {
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = controller.isEdit;
+
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
@@ -25,7 +28,7 @@ class CreateProfileView extends GetView<CreateProfileController> {
             onPressed: Get.back,
           ),
           title: Text(
-            'প্রোফাইল তৈরি করুন',
+            isEdit ? 'প্রোফাইল সম্পাদনা' : 'প্রোফাইল তৈরি করুন',
             style: TextStyle(
               fontSize: 18.sp,
               fontWeight: FontWeight.w800,
@@ -38,48 +41,52 @@ class CreateProfileView extends GetView<CreateProfileController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.verified_user_outlined,
-                      size: 14.sp, color: AppColors.primary),
-                  SizedBox(width: 4.w),
-                  Text(
-                    'ফোন নম্বর যাচাইকৃত',
-                    style: TextStyle(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
+              if (!isEdit) ...[
+                Text(
+                  'আপনাকে স্বাগতম!',
+                  style: TextStyle(
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                SizedBox(height: 6.h),
+                Text(
+                  'আপনার পরিচয় দিন। একটি প্রোফাইল কাছের মানুষের সঙ্গে '
+                      'কেনাবেচা সহজ করবে।',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    height: 1.5,
+                    color: AppColors.textGrey,
+                  ),
+                ),
+                SizedBox(height: 16.h),
+              ],
+              _photoCard(isEdit),
+              Obx(
+                    () => controller.hasPhoto
+                    ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: controller.removePhoto,
+                    child: Text(
+                      'ছবি মুছুন',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.danger,
+                      ),
                     ),
                   ),
-                ],
+                )
+                    : const SizedBox.shrink(),
               ),
-              SizedBox(height: 8.h),
-              Text(
-                'আপনাকে স্বাগতম!',
-                style: TextStyle(
-                  fontSize: 24.sp,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textDark,
-                ),
-              ),
-              SizedBox(height: 6.h),
-              Text(
-                'আপনার পরিচয় দিন। একটি প্রোফাইল কাছের মানুষের সঙ্গে '
-                'কেনাবেচা সহজ করবে।',
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  height: 1.5,
-                  color: AppColors.textGrey,
-                ),
-              ),
-              SizedBox(height: 16.h),
-              _photoCard(),
-              SizedBox(height: 18.h),
+              SizedBox(height: 10.h),
               _label('আপনার নাম (আবশ্যক)'),
               SizedBox(height: 6.h),
               TextField(
                 controller: controller.nameCtrl,
-                textInputAction: TextInputAction.next,
+                textInputAction: TextInputAction.done,
                 style: _inputStyle,
                 decoration: _decoration('আপনার নাম লিখুন'),
               ),
@@ -87,56 +94,18 @@ class CreateProfileView extends GetView<CreateProfileController> {
               _label('আপনার এলাকা (আবশ্যক)'),
               SizedBox(height: 6.h),
               _areaBox(),
-              SizedBox(height: 16.h),
-              Text(
-                'ফোন নম্বর যাচাই',
-                style: TextStyle(fontSize: 11.sp, color: AppColors.textGrey),
-              ),
-              SizedBox(height: 6.h),
-              TextField(
-                controller: controller.phoneCtrl,
-                focusNode: controller.phoneFocus,
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.done,
-                maxLength: 11,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9০-৯]')),
-                ],
-                style: _inputStyle,
-                decoration: _decoration('০১XXXXXXXXX').copyWith(
-                  counterText: '',
-                  suffixIcon: Padding(
-                    padding: EdgeInsets.only(right: 12.w),
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: controller.changePhone,
-                      child: Center(
-                        widthFactor: 1,
-                        child: Text(
-                          'পরিবর্তন',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
               SizedBox(height: 22.h),
               Obx(
-                () => SizedBox(
+                    () => SizedBox(
                   width: double.infinity,
                   height: 50.h,
                   child: ElevatedButton(
                     onPressed:
-                        controller.isLoading.value ? null : controller.start,
+                    controller.isLoading.value ? null : controller.start,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       disabledBackgroundColor:
-                          AppColors.primary.withOpacity(0.6),
+                      AppColors.primary.withOpacity(0.6),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -145,20 +114,20 @@ class CreateProfileView extends GetView<CreateProfileController> {
                     ),
                     child: controller.isLoading.value
                         ? SizedBox(
-                            width: 20.w,
-                            height: 20.w,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
+                      width: 20.w,
+                      height: 20.w,
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                         : Text(
-                            'শুরু করুন',
-                            style: TextStyle(
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                      isEdit ? 'সংরক্ষণ করুন' : 'শুরু করুন',
+                      style: TextStyle(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -181,19 +150,19 @@ class CreateProfileView extends GetView<CreateProfileController> {
       TextStyle(fontSize: 14.sp, color: AppColors.textDark);
 
   Widget _label(String text) => Text(
-        text,
-        style: TextStyle(
-          fontSize: 13.sp,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textDark,
-        ),
-      );
+    text,
+    style: TextStyle(
+      fontSize: 13.sp,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textDark,
+    ),
+  );
 
   InputDecoration _decoration(String hint) {
     OutlineInputBorder border(Color c) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: c),
-        );
+      borderRadius: BorderRadius.circular(12.r),
+      borderSide: BorderSide(color: c),
+    );
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(fontSize: 13.sp, color: AppColors.textGrey),
@@ -206,7 +175,7 @@ class CreateProfileView extends GetView<CreateProfileController> {
     );
   }
 
-  Widget _photoCard() {
+  Widget _photoCard(bool isEdit) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: controller.pickPhoto,
@@ -219,18 +188,22 @@ class CreateProfileView extends GetView<CreateProfileController> {
         child: Row(
           children: [
             Obx(() {
-              final photo = controller.photo.value;
+              final path = controller.photoPath.value;
+              final url = controller.photoUrl.value;
+              final ImageProvider? provider = path != null
+                  ? FileImage(File(path))
+                  : (url != null ? NetworkImage(url) : null);
+
               return Stack(
                 clipBehavior: Clip.none,
                 children: [
                   CircleAvatar(
                     radius: 28.r,
                     backgroundColor: Colors.white,
-                    backgroundImage:
-                        photo != null ? AssetImage(photo) : null,
-                    child: photo == null
+                    backgroundImage: provider,
+                    child: provider == null
                         ? Icon(Icons.person_outline,
-                            size: 30.sp, color: AppColors.primary)
+                        size: 30.sp, color: AppColors.primary)
                         : null,
                   ),
                   Positioned(
@@ -256,7 +229,7 @@ class CreateProfileView extends GetView<CreateProfileController> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'ছবি যোগ করুন',
+                    isEdit ? 'ছবি বদলান' : 'ছবি যোগ করুন',
                     style: TextStyle(
                       fontSize: 14.sp,
                       fontWeight: FontWeight.w800,
@@ -265,7 +238,9 @@ class CreateProfileView extends GetView<CreateProfileController> {
                   ),
                   SizedBox(height: 2.h),
                   Text(
-                    'ঐচ্ছিক - পরে যোগ করতে পারবেন',
+                    isEdit
+                        ? 'নতুন ছবি বাছাই করতে চাপুন'
+                        : 'ঐচ্ছিক - পরে যোগ করতে পারবেন',
                     style: TextStyle(
                       fontSize: 11.sp,
                       color: AppColors.textGrey,
@@ -281,29 +256,32 @@ class CreateProfileView extends GetView<CreateProfileController> {
   }
 
   Widget _areaBox() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.location_on, size: 18.sp, color: AppColors.primary),
-          SizedBox(width: 8.w),
-          Expanded(
-            child: Obx(
-              () => Text(
-                controller.area.value,
-                style: _inputStyle,
-              ),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: controller.changeArea,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 14.h),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.r),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.location_on, size: 18.sp, color: AppColors.primary),
+            SizedBox(width: 8.w),
+            Expanded(
+              child: Obx(() {
+                final a = controller.area.value;
+                return Text(
+                  a.isEmpty ? 'এলাকা বাছুন' : a,
+                  style: a.isEmpty
+                      ? _inputStyle.copyWith(color: AppColors.textGrey)
+                      : _inputStyle,
+                );
+              }),
             ),
-          ),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: controller.changeArea,
-            child: Text(
+            Text(
               'পরিবর্তন',
               style: TextStyle(
                 fontSize: 12.sp,
@@ -311,8 +289,8 @@ class CreateProfileView extends GetView<CreateProfileController> {
                 color: AppColors.primary,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
