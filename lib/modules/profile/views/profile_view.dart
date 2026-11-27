@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:hatbodol/modules/home/widgets/product_card.dart';
+import 'package:hatbodol/modules/profile/views/saved_products.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/bn_number.dart';
@@ -74,12 +76,18 @@ class ProfileView extends GetView<ProfileController> {
                   SizedBox(height: 16.h),
                   const _Tabs(),
                   SizedBox(height: 14.h),
-                  Obx(
-                        () => Row(
+                  Obx(() {
+                    final saved = controller.tabIndex.value == 1;
+                    final count = saved
+                        ? controller.savedPosts
+                        .where((p) => SavedProducts.isSaved(p.id, true))
+                        .length
+                        : controller.myPosts.length;
+                    return Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'আমার সব পোস্ট',
+                          saved ? 'সেভ করা পোস্ট' : 'আমার সব পোস্ট',
                           style: TextStyle(
                             fontSize: 15.sp,
                             fontWeight: FontWeight.w700,
@@ -87,15 +95,15 @@ class ProfileView extends GetView<ProfileController> {
                           ),
                         ),
                         Text(
-                          '${toBn(controller.myPosts.length)}টি পোস্ট',
+                          '${toBn(count)}টি পোস্ট',
                           style: TextStyle(
                             fontSize: 12.sp,
                             color: AppColors.textGrey,
                           ),
                         ),
                       ],
-                    ),
-                  ),
+                    );
+                  }),
                   SizedBox(height: 10.h),
                 ],
               ),
@@ -105,21 +113,46 @@ class ProfileView extends GetView<ProfileController> {
                 final tab = controller.tabIndex.value;
                 final posts = controller.myPosts.toList();
 
-                if (tab == 1) {
+                if (tab == 1) return const _SavedList();
+                if (controller.postsLoading.value && posts.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (controller.postsError.value.isNotEmpty && posts.isEmpty) {
                   return Center(
-                    child: Text(
-                      'কোনো সেভ করা পোস্ট নেই',
-                      style: TextStyle(
-                        fontSize: 13.sp,
-                        color: AppColors.textGrey,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 24.w),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            controller.postsError.value,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              color: AppColors.textGrey,
+                            ),
+                          ),
+                          SizedBox(height: 12.h),
+                          ElevatedButton(
+                            onPressed: controller.fetchMyPosts,
+                            child: const Text('Retry'),
+                          ),
+                        ],
                       ),
                     ),
                   );
                 }
-                return ListView.builder(
-                  padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
-                  itemCount: posts.length,
-                  itemBuilder: (_, i) => _PostCard(post: posts[i], index: i),
+                if (posts.isEmpty) {
+                  return _message('আপনি এখনো কোনো পোস্ট করেননি');
+                }
+                return RefreshIndicator(
+                  onRefresh: controller.fetchMyPosts,
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+                    itemCount: posts.length,
+                    itemBuilder: (_, i) => _PostCard(post: posts[i]),
+                  ),
                 );
               }),
             ),
@@ -136,6 +169,13 @@ class ProfileView extends GetView<ProfileController> {
       ),
     );
   }
+
+  Widget _message(String text) => Center(
+    child: Text(
+      text,
+      style: TextStyle(fontSize: 13.sp, color: AppColors.textGrey),
+    ),
+  );
 }
 
 class _ProfileInfo extends GetView<ProfileController> {
@@ -176,8 +216,7 @@ class _ProfileInfo extends GetView<ProfileController> {
           CircleAvatar(
             radius: 32.r,
             backgroundColor: AppColors.primaryLight,
-            backgroundImage:
-            p.photo.isNotEmpty ? NetworkImage(p.photo) : null,
+            backgroundImage: p.photo.isNotEmpty ? NetworkImage(p.photo) : null,
             child: p.photo.isEmpty
                 ? Icon(Icons.person, size: 32.sp, color: AppColors.primary)
                 : null,
@@ -288,8 +327,31 @@ class _Tabs extends GetView<ProfileController> {
 
 class _PostCard extends GetView<ProfileController> {
   final MyPost post;
-  final int index;
-  const _PostCard({required this.post, required this.index});
+  const _PostCard({required this.post});
+
+  Widget _placeholder(IconData icon) => Container(
+    width: 64.w,
+    height: 64.w,
+    color: Colors.grey.shade200,
+    child: Icon(icon),
+  );
+
+  Widget _thumb() {
+    final img = post.image;
+    if (img.isEmpty) return _placeholder(Icons.image_outlined);
+    if (img.startsWith('http')) {
+      return Image.network(
+        img,
+        width: 64.w,
+        height: 64.w,
+        fit: BoxFit.cover,
+        cacheWidth: 200,
+        errorBuilder: (_, __, ___) =>
+            _placeholder(Icons.image_not_supported_outlined),
+      );
+    }
+    return Image.asset(img, width: 64.w, height: 64.w, fit: BoxFit.cover);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -302,69 +364,88 @@ class _PostCard extends GetView<ProfileController> {
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8.r),
-                child: Image.asset(
-                  post.image,
-                  width: 64.w,
-                  height: 64.w,
-                  fit: BoxFit.cover,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Get.toNamed(
+              '/product-details',
+              arguments: {'id': post.id},
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8.r),
+                  child: _thumb(),
                 ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      post.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        post.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textDark,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      post.price,
-                      style: TextStyle(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
+                      SizedBox(height: 2.h),
+                      Text(
+                        post.price,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      post.isSold ? 'বিক্রি সম্পন্ন' : 'সক্রিয়',
-                      style: TextStyle(
-                        fontSize: 11.sp,
-                        color: AppColors.textGrey,
+                      SizedBox(height: 2.h),
+                      Text(
+                        post.statusLabel,
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          color: AppColors.textGrey,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           Divider(height: 20.h, color: AppColors.border),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _action('সম্পাদনা', AppColors.primary, () {}),
               _action(
-                'বিক্রি হয়েছে',
+                'সম্পাদনা',
                 AppColors.primary,
-                    () => controller.markAsSold(index),
+                    () => controller.editPost(post),
               ),
-              _action(
-                'মুছুন',
-                AppColors.danger,
-                    () => controller.deletePost(index),
-              ),
+              Obx(() {
+                final busy = controller.busyId.value == post.id;
+                if (post.isSold) {
+                  return _action(
+                    busy ? 'অপেক্ষা করুন...' : 'আবার তালিকাভুক্ত',
+                    AppColors.primary,
+                    busy ? null : () => controller.relist(post),
+                  );
+                }
+                return _action(
+                  busy ? 'অপেক্ষা করুন...' : 'বিক্রি হয়েছে',
+                  AppColors.primary,
+                  busy ? null : () => controller.confirmMarkSold(post),
+                );
+              }),
+              Obx(() {
+                final deleting = controller.deletingId.value == post.id;
+                return _action(
+                  deleting ? 'মুছছে...' : 'মুছুন',
+                  AppColors.danger,
+                  deleting ? null : () => controller.confirmDeletePost(post),
+                );
+              }),
             ],
           ),
         ],
@@ -372,7 +453,7 @@ class _PostCard extends GetView<ProfileController> {
     );
   }
 
-  Widget _action(String label, Color color, VoidCallback onTap) {
+  Widget _action(String label, Color color, VoidCallback? onTap) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -383,10 +464,80 @@ class _PostCard extends GetView<ProfileController> {
           style: TextStyle(
             fontSize: 12.sp,
             fontWeight: FontWeight.w600,
-            color: color,
+            color: onTap == null ? AppColors.textGrey : color,
           ),
         ),
       ),
     );
+  }
+}
+class _SavedList extends GetView<ProfileController> {
+  const _SavedList();
+
+  Widget _message(String text) => Center(
+    child: Text(
+      text,
+      style: TextStyle(fontSize: 13.sp, color: AppColors.textGrey),
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final all = controller.savedPosts.toList();
+      // হার্টে চাপ দিয়ে আনসেভ করলে সাথে সাথে তালিকা থেকে সরে যায়
+      final items =
+      all.where((p) => SavedProducts.isSaved(p.id, true)).toList();
+
+      if (controller.savedLoading.value && all.isEmpty) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (controller.savedError.value.isNotEmpty && all.isEmpty) {
+        return Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24.w),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  controller.savedError.value,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13.sp, color: AppColors.textGrey),
+                ),
+                SizedBox(height: 12.h),
+                ElevatedButton(
+                  onPressed: controller.fetchSaved,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+      if (items.isEmpty) return _message('কোনো সেভ করা পোস্ট নেই');
+
+      return RefreshIndicator(
+        onRefresh: controller.fetchSaved,
+        child: GridView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+          itemCount: items.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12.w,
+            mainAxisSpacing: 12.h,
+            childAspectRatio: 0.78,
+          ),
+          itemBuilder: (_, i) => GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Get.toNamed(
+              '/product-details',
+              arguments: {'id': items[i].id},
+            ),
+            child: ProductCard(product: items[i]),
+          ),
+        ),
+      );
+    });
   }
 }

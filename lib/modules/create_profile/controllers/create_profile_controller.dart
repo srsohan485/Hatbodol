@@ -5,6 +5,7 @@ import 'package:hatbodol/Services/StorageService.dart';
 import 'package:hatbodol/Services/location_session.dart';
 import 'package:hatbodol/core/utils/app_error.dart';
 import 'package:hatbodol/core/utils/app_snackbar.dart';
+import 'package:hatbodol/core/utils/bn_number.dart';
 import 'package:hatbodol/modules/profile/models/user_profile.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -13,6 +14,8 @@ class CreateProfileController extends GetxController {
   final _picker = ImagePicker();
 
   final nameCtrl = TextEditingController();
+  final phoneCtrl = TextEditingController();
+  final phoneFocus = FocusNode();
 
   final area = ''.obs;
   final photoPath = RxnString(); // নতুন বাছাই করা ছবির ফাইল
@@ -24,6 +27,7 @@ class CreateProfileController extends GetxController {
   double? _lng;
   bool _areaChanged = false;
   bool _photoRemoved = false;
+  String? _verifiedPhone; // যে নম্বর একবার যাচাই হয়েছে
 
   bool get hasPhoto => photoPath.value != null || photoUrl.value != null;
 
@@ -82,6 +86,14 @@ class CreateProfileController extends GetxController {
     }
   }
 
+  void changePhone() {
+    phoneFocus.requestFocus();
+    phoneCtrl.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: phoneCtrl.text.length,
+    );
+  }
+
   Future<void> start() async {
     if (isLoading.value) return;
 
@@ -97,12 +109,22 @@ class CreateProfileController extends GetxController {
       return;
     }
 
+    // ফোন নম্বর শুধু তৈরির সময় লাগে। বাংলাদেশি মোবাইল: ০১ দিয়ে শুরু, মোট ১১ সংখ্যা
+    var phone = '';
+    if (!isEdit) {
+      phone = toEn(phoneCtrl.text.trim());
+      if (!RegExp(r'^01[3-9]\d{8}$').hasMatch(phone)) {
+        showError('সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন');
+        return;
+      }
+    }
+
     isLoading.value = true;
     try {
       if (isEdit) {
         await _update(name, areaText);
       } else {
-        await _create(name, areaText);
+        await _create(name, areaText, phone);
       }
     } catch (e) {
       if (httpStatusOf(e) == 401) {
@@ -122,13 +144,33 @@ class CreateProfileController extends GetxController {
     }
   }
 
-  Future<void> _create(String name, String areaText) async {
+  Future<void> _create(String name, String areaText, String phone) async {
+    // এই নম্বর আগেই যাচাই হয়ে থাকলে আবার OTP চাইবে না
+    if (_verifiedPhone != phone) {
+      // ১) ফোনে OTP পাঠানো
+      await _api.post(
+        '/phone/send-otp/',
+        headers: _auth,
+        body: {'phone': phone},
+      );
+
+      // ২) OTP পেজ খোলে। যাচাই হলে true নিয়ে ফেরে, ব্যাক চাপলে null
+      final verified = await Get.toNamed(
+        '/otp',
+        arguments: {'phone': phone, 'flow': 'profile'},
+      );
+      if (verified != true) return;
+      _verifiedPhone = phone;
+    }
+
+    // ৩) প্রোফাইল তৈরি (নিচের কোড যেমন ছিল তেমনই থাকবে)
     final res = await _api.postMultipart(
       '/profile/create/',
       headers: _auth,
       fields: {
         'full_name': name,
         'area': areaText,
+        'phone': phone,
         if (_lat != null) 'latitude': '$_lat',
         if (_lng != null) 'longitude': '$_lng',
       },
@@ -178,6 +220,8 @@ class CreateProfileController extends GetxController {
   @override
   void onClose() {
     nameCtrl.dispose();
+    phoneCtrl.dispose();
+    phoneFocus.dispose();
     super.onClose();
   }
 }

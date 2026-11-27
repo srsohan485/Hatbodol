@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:hatbodol/core/widgets/app_bottom_nav.dart';
@@ -94,6 +95,20 @@ class CreateProfileView extends GetView<CreateProfileController> {
               _label('আপনার এলাকা (আবশ্যক)'),
               SizedBox(height: 6.h),
               _areaBox(),
+              if (!isEdit) ...[
+                SizedBox(height: 16.h),
+                Text(
+                  'ফোন নম্বর যাচাই',
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.textGrey),
+                ),
+                SizedBox(height: 6.h),
+                _phoneField(),
+                SizedBox(height: 6.h),
+                Text(
+                  'এই নম্বরে একটি OTP পাঠানো হবে',
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.textGrey),
+                ),
+              ],
               SizedBox(height: 22.h),
               Obx(
                     () => SizedBox(
@@ -134,7 +149,9 @@ class CreateProfileView extends GetView<CreateProfileController> {
             ],
           ),
         ),
-        bottomNavigationBar: AppBottomNav(
+        bottomNavigationBar: MediaQuery.of(context).viewInsets.bottom > 0
+            ? null
+            : AppBottomNav(
           currentIndex: 3,
           onTap: (i) {
             if (i == 0) Get.offAllNamed('/home');
@@ -250,6 +267,41 @@ class CreateProfileView extends GetView<CreateProfileController> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _phoneField() {
+    return TextField(
+      controller: controller.phoneCtrl,
+      focusNode: controller.phoneFocus,
+      keyboardType: TextInputType.phone,
+      textInputAction: TextInputAction.done,
+      maxLength: 11,
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9০-৯]')),
+      ],
+      style: _inputStyle,
+      decoration: _decoration('০১XXXXXXXXX').copyWith(
+        counterText: '',
+        suffixIcon: Padding(
+          padding: EdgeInsets.only(right: 12.w),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: controller.changePhone,
+            child: Center(
+              widthFactor: 1,
+              child: Text(
+                'পরিবর্তন',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

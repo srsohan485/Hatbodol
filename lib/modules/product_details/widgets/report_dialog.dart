@@ -14,7 +14,7 @@ class ReportDialog extends GetView<ProductDetailsController> {
       backgroundColor: Colors.white,
       insetPadding: EdgeInsets.symmetric(horizontal: 20.w),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(16.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -45,8 +45,9 @@ class ReportDialog extends GetView<ProductDetailsController> {
             SizedBox(height: 14.h),
             Obx(() {
               final selected = controller.selectedReason.value;
+              final reasons = controller.reportReasons.toList();
               return Column(
-                children: List.generate(controller.reportReasons.length, (i) {
+                children: List.generate(reasons.length, (i) {
                   final isSelected = selected == i;
                   return GestureDetector(
                     onTap: () => controller.selectReason(i),
@@ -68,11 +69,13 @@ class ReportDialog extends GetView<ProductDetailsController> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            controller.reportReasons[i],
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              color: AppColors.textDark,
+                          Expanded(
+                            child: Text(
+                              reasons[i].label,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                color: AppColors.textDark,
+                              ),
                             ),
                           ),
                           Icon(
@@ -92,46 +95,66 @@ class ReportDialog extends GetView<ProductDetailsController> {
               );
             }),
             SizedBox(height: 6.h),
-            SizedBox(
-              width: double.infinity,
-              height: 46.h,
-              child: ElevatedButton(
-                onPressed: controller.sendReport,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.r),
+            Obx(() {
+              final busy = controller.isReporting.value;
+              return SizedBox(
+                width: double.infinity,
+                height: 46.h,
+                child: ElevatedButton(
+                  onPressed: busy ? null : controller.sendReport,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                  child: busy
+                      ? SizedBox(
+                    width: 20.w,
+                    height: 20.w,
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : Text(
+                    'রিপোর্ট পাঠান',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-                child: Text(
-                  'রিপোর্ট পাঠান',
-                  style:
-                      TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
+              );
+            }),
             SizedBox(height: 10.h),
-            SizedBox(
-              width: double.infinity,
-              height: 46.h,
-              child: OutlinedButton(
-                onPressed: controller.blockSeller,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.primary,
-                  side: const BorderSide(color: AppColors.primary),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.r),
+            Obx(() {
+              final busy = controller.isBlocking.value;
+              return SizedBox(
+                width: double.infinity,
+                height: 46.h,
+                child: OutlinedButton(
+                  onPressed: busy ? null : controller.blockSeller,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                  child: Text(
+                    'বিক্রেতাকে ব্লক করুন',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-                child: Text(
-                  'বিক্রেতাকে ব্লক করুন',
-                  style:
-                      TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
+              );
+            }),
           ],
         ),
       ),

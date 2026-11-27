@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:hatbodol/Services/ApiService.dart';
 import 'package:hatbodol/Services/StorageService.dart';
 import 'package:hatbodol/Services/location_session.dart';
+import 'package:hatbodol/modules/profile/views/saved_products.dart';
 import '../../../core/utils/app_error.dart';
 import '../../../core/utils/app_snackbar.dart';
 import '../models/product_model.dart';
@@ -113,6 +114,7 @@ class HomeController extends GetxController {
       products.assignAll(
         list.map((e) => ProductModel.fromJson(e as Map<String, dynamic>)),
       );
+      SavedProducts.syncAll(products);
       _page = (res['page'] as num?)?.toInt() ?? 1;
       _hasNext = res['has_next'] == true;
     } catch (e) {

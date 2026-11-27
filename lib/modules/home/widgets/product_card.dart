@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
+import 'package:hatbodol/modules/profile/views/saved_products.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../models/product_model.dart';
@@ -46,6 +48,34 @@ class ProductCard extends StatelessWidget {
     return Image.asset(img, fit: BoxFit.cover, cacheWidth: 400);
   }
 
+  Widget _heart() {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => SavedProducts.toggle(
+        product.id,
+        SavedProducts.isSaved(product.id, product.isSaved),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(4.w), // চাপার জায়গা একটু বড়
+        child: Obx(() {
+          final saved = SavedProducts.isSaved(product.id, product.isSaved);
+          return Container(
+            padding: EdgeInsets.all(6.w),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              saved ? Icons.favorite : Icons.favorite_border,
+              size: 16.sp,
+              color: saved ? Colors.red : AppColors.textDark,
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -62,22 +92,7 @@ class ProductCard extends StatelessWidget {
               fit: StackFit.expand,
               children: [
                 _buildImage(),
-                Positioned(
-                  top: 8.h,
-                  right: 8.w,
-                  child: Container(
-                    padding: EdgeInsets.all(6.w),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      product.isSaved ? Icons.favorite : Icons.favorite_border,
-                      size: 16.sp,
-                      color: product.isSaved ? Colors.red : AppColors.textDark,
-                    ),
-                  ),
-                ),
+                Positioned(top: 4.h, right: 4.w, child: _heart()),
                 if (product.hasVideo)
                   Positioned(
                     left: 8.w,

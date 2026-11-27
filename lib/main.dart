@@ -15,6 +15,8 @@ import 'package:hatbodol/modules/location/bindings/location_binding.dart';
 import 'package:hatbodol/modules/location/views/location_permission_view.dart';
 import 'package:hatbodol/modules/new_post/bindings/new_post_binding.dart';
 import 'package:hatbodol/modules/new_post/views/new_post_view.dart';
+import 'package:hatbodol/modules/profile/controllers/edit_post_controller.dart';
+import 'package:hatbodol/modules/profile/views/edit_post_view.dart';
 import 'package:hatbodol/modules/search_results/bindings/search_results_binding.dart';
 import 'package:hatbodol/modules/search_results/views/search_results_view.dart';
 import 'package:hatbodol/modules/seller_profile/bindings/seller_profile_binding.dart';
@@ -147,6 +149,13 @@ class MyApp extends StatelessWidget {
               name: '/reset-password',
               page: () => const ResetPasswordView(),
               binding: ResetPasswordBinding(),
+            ),
+            GetPage(
+              name: '/edit-post',
+              page: () => const EditPostView(),
+              binding: BindingsBuilder(
+                    () => Get.lazyPut(() => EditPostController()),
+              ),
             ),
           ],
         );
